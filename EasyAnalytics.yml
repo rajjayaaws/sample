@@ -1,0 +1,902 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS INTERNAL DEMO - Easy Analytics - This stack takes an S3 location as input and creates all the backend resources needed to visualize the data contained there in QuickSight.
+Parameters:
+  1ReadMe:
+    Type: String
+    Default: README
+    Description: 'AWS INTERNAL DEMO - PREREQUISITES - 1) Data should be available in S3 (Do NOT use S3 paths you need for other demos. Access will be modified in LakeFormation.), 2) QuickSight should be setup on the account, 3) Athena Primary workgroup should have a query result location configured.'
+  2DataSetLocation:
+    Type: String
+    MinLength: 1
+    Description: 'Enter S3 URI for your dataset. E.g. s3://bucket/prefix/data/'
+  3QuickSightUser:
+    Type: String
+    MinLength: 1
+    Description: REQUIRED - User name of QuickSight user from default namespace (as displayed in QuickSight admin panel). For new a QuickSight subscription, ensure this User name is not same as any IAM username. Dashboard created by this template with be shared with this user.
+  4QuickSighAccountName:
+    Type: String
+    MinLength: 1
+    Description: REQUIRED - Account name for a new QuickSight subscription. The account name cannot be changed later. This value is ignored if you have an existing QuickSight account.
+  5QuickSighNotificationEmail:
+    Type: String
+    MinLength: 1
+    Description: REQUIRED - Notification email for a new QuickSight account. This value is ignored if you have an existing QuickSight account.
+    AllowedPattern: '[^@]+@[^@]+\.[^@]+'
+  6Suffix:
+    Type: String
+    Description: OPTIONAL - If you need to create multiple instances of embedding sample on same aws account, add a short NUMERIC suffix here.
+
+Resources:
+  EasyAnalyticsExecRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      RoleName: !Join
+        - ''
+        - - EasyAnalyticsExecRole
+          - !Ref 6Suffix
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+          - Effect: Allow
+            Principal:
+              Service:
+                - glue.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+          - ''
+          - - EasyAnalyticsPolicy
+            - !Ref 6Suffix
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:Put*
+                  - s3:Delete*
+                Resource:
+                  - !Join
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - easyanalytics-codebucket-
+                      - !Ref AWS::AccountId
+                      - !Ref 6Suffix
+                  - !Join
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - easyanalytics-codebucket-
+                      - !Ref AWS::AccountId
+                      - !Ref 6Suffix
+                      - '/*'
+              - Effect: Allow
+                Action:
+                  - s3:List*
+                  - s3:Get*
+                Resource:
+                  - !Join
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - !Select [2, !Split [ "/" , !Ref 2DataSetLocation ]]
+                  - !Join
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - !Select [2, !Split [ "/" , !Ref 2DataSetLocation ]]
+                      - '/*'
+              - Effect: Allow
+                Action:
+                  - ds:AuthorizeApplication
+                  - ds:UnauthorizeApplication
+                  - ds:CheckAlias
+                  - ds:CreateAlias
+                  - ds:DescribeDirectories
+                  - ds:DescribeTrusts
+                  - ds:DeleteDirectory
+                  - ds:CreateIdentityPoolDirectory
+                  - iam:ListAccountAliases
+                  - quicksight:CreateAdmin
+                  - quicksight:Subscribe
+                  - quicksight:GetGroupMapping
+                  - quicksight:SearchDirectoryGroups
+                  - quicksight:SetGroupMapping
+                  - quicksight:CreateAccountSubscription
+                  - quicksight:ListUsers
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - glue:StartCrawler
+                  - glue:GetCrawler
+                  - glue:GetDatabase
+                  - glue:CreateDatabase
+                  - glue:DeleteDatabase
+                  - glue:UpdateDatabase
+                  - glue:GetTable
+                  - glue:GetTables
+                  - glue:CreateTable
+                  - glue:DeleteTable
+                  - glue:UpdateTable
+                  - glue:GetPartitions
+                  - glue:BatchGetPartition
+                  - glue:BatchCreatePartition
+                  - glue:CreatePartition
+                  - glue:UpdatePartition
+                  - glue:CreateTrigger
+                  - glue:DeleteTrigger
+                  - glue:GetDatabase
+                Resource:
+                  - !Join
+                    - ''
+                    - - 'arn:'
+                      - !Ref AWS::Partition
+                      - ':glue:'
+                      - !Ref AWS::Region
+                      - ':'
+                      - !Ref AWS::AccountId
+                      - ':database/easyanalytics'
+                      - !Ref 6Suffix
+                  - !Join
+                    - ''
+                    - - 'arn:'
+                      - !Ref AWS::Partition
+                      - ':glue:'
+                      - !Ref AWS::Region
+                      - ':'
+                      - !Ref AWS::AccountId
+                      - ':userDefinedFunction/easyanalytics'
+                      - !Ref 6Suffix
+                      - '/*'
+                  - !Join
+                    - ''
+                    - - 'arn:'
+                      - !Ref AWS::Partition
+                      - ':glue:'
+                      - !Ref AWS::Region
+                      - ':'
+                      - !Ref AWS::AccountId
+                      - ':crawler/EasyAnalyticsCrawler'
+                      - !Ref 6Suffix
+                  - !Join
+                    - ''
+                    - - 'arn:'
+                      - !Ref AWS::Partition
+                      - ':glue:'
+                      - !Ref AWS::Region
+                      - ':'
+                      - !Ref AWS::AccountId
+                      - ':catalog'
+                  - !Join
+                    - ''
+                    - - 'arn:'
+                      - !Ref AWS::Partition
+                      - ':glue:'
+                      - !Ref AWS::Region
+                      - ':'
+                      - !Ref AWS::AccountId
+                      - ':table/easyanalytics'
+                      - !Ref 6Suffix
+                      - '/*'
+              - Effect: Allow
+                Action:
+                  - lakeformation:GrantPermissions
+                  - lakeformation:RevokePermissions
+                  - lakeformation:ListPermissions
+                  - lakeformation:RegisterResource
+                  - lakeformation:DeregisterResource
+                  - lakeformation:GetDataLakeSettings
+                  - lakeformation:PutDataLakeSettings
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - quicksight:DescribeUser
+                  - quicksight:CreateDataSource
+                  - quicksight:DescribeDataSource
+                  - quicksight:DeleteDataSource
+                  - quicksight:PassDataSource
+                  - quicksight:CreateDataSet
+                  - quicksight:DescribeDataSet
+                  - quicksight:DeleteDataSet
+                  - quicksight:CreateDashboard
+                  - quicksight:DescribeDashboard
+                  - quicksight:DeleteDashboard
+                  - quicksight:PassDataSet
+                  - quicksight:DescribeTemplate
+                  - quicksight:CreateIngestion
+                Resource:
+                  - !Join
+                    - ''
+                    - - 'arn:aws:quicksight:'
+                      - '*:'
+                      - !Ref AWS::AccountId
+                      - ':*/EasyAnalytics-*'
+                  - !Join
+                    - ''
+                    - - 'arn:aws:quicksight:'
+                      - '*:'
+                      - !Ref AWS::AccountId
+                      - ':user/default/*'
+              - Effect: Allow
+                Action:
+                  - quicksight:DescribeTemplate
+                Resource:
+                  - 'arn:aws:quicksight:us-east-1:874374045911:template/StarterTemplate'
+              - Effect: Allow
+                Action:
+                  - iam:GetRole
+                  - iam:PassRole
+                Resource:
+                  - !Join
+                    - ''
+                    - - 'arn:aws:iam::'
+                      - !Ref AWS::AccountId
+                      - ':role/EasyAnalyticsExecRole*'
+              - Effect: Allow
+                Action:
+                  - iam:GetRole
+                  - iam:PassRole
+                Resource:
+                  - !Join
+                    - ''
+                    - - 'arn:aws:iam::'
+                      - !Ref AWS::AccountId
+                      - ':role/EasyAnalyticsQuickSightRole*'
+              - Effect: Allow
+                Action:
+                  - quicksight:DeleteUser
+                Resource:
+                  - !Join
+                    - ''
+                    - - 'arn:aws:quicksight:*:'
+                      - !Ref AWS::AccountId
+                      - ':user/default/EasyAnalyticsExecRole'
+                      - !Ref 6Suffix
+                      - '/EasyAnalyticsCustomResource'
+                      - !Ref 6Suffix
+              - Effect: Allow
+                Action:
+                  - quicksight:RegisterUser
+                Resource:
+                  - !Join
+                    - ''
+                    - - 'arn:aws:quicksight:*:'
+                      - !Ref AWS::AccountId
+                      - ':user/default/'
+                      - !Ref 3QuickSightUser
+
+  EasyAnalyticsQuickSightRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      RoleName: !Join
+        - ''
+        - - EasyAnalyticsQuickSightRole
+          - !Ref 6Suffix
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - quicksight.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+          - ''
+          - - EasyAnalyticsQSPolicy
+            - !Ref 6Suffix
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - athena:ListEngineVersions
+                  - athena:ListDataCatalogs
+                  - lakeformation:GetDataAccess
+                  - athena:ListWorkGroups
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:GetObjectVersion
+                Condition:
+                  Bool:
+                    'aws:SecureTransport': 'true'
+                Resource:
+                  - !Join
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - !Select [2, !Split [ "/" , !Ref 2DataSetLocation ]]
+                  - !Join
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - !Select [2, !Split [ "/" , !Ref 2DataSetLocation ]]
+                      - '/*'
+              - Effect: Allow
+                Action:
+                  - athena:GetTableMetadata
+                  - athena:StartQueryExecution
+                  - athena:GetQueryResults
+                  - s3:CreateBucket
+                  - s3:ListBucket
+                  - athena:GetDatabase
+                  - athena:GetDataCatalog
+                  - athena:ListQueryExecutions
+                  - athena:GetWorkGroup
+                  - s3:AbortMultipartUpload
+                  - athena:StopQueryExecution
+                  - s3:ListBucketMultipartUploads
+                  - s3:PutBucketPublicAccessBlock
+                  - athena:GetQueryResultsStream
+                  - glue:GetTables
+                  - glue:GetDatabases
+                  - glue:GetTable
+                  - s3:ListMultipartUploadParts
+                  - s3:PutObject
+                  - s3:GetObject
+                  - athena:ListDatabases
+                  - athena:GetQueryExecution
+                  - athena:ListTableMetadata
+                  - s3:GetBucketLocation
+                  - athena:BatchGetQueryExecution
+                Resource:
+                  - !Join
+                    - ''
+                    - - 'arn:'
+                      - !Ref AWS::Partition
+                      - ':glue:'
+                      - !Ref AWS::Region
+                      - ':'
+                      - !Ref AWS::AccountId
+                      - ':database/easyanalytics'
+                      - !Ref 6Suffix
+                  - !Join
+                    - ''
+                    - - 'arn:'
+                      - !Ref AWS::Partition
+                      - ':s3:::aws-athena-query-results-*'
+                  - !Join
+                    - ''
+                    - - 'arn:'
+                      - !Ref AWS::Partition
+                      - ':athena:'
+                      - !Ref AWS::Region
+                      - ':'
+                      - !Ref AWS::AccountId
+                      - ':workgroup/primary'
+                  - !Join
+                    - ''
+                    - - 'arn:'
+                      - !Ref AWS::Partition
+                      - ':glue:'
+                      - !Ref AWS::Region
+                      - ':'
+                      - !Ref AWS::AccountId
+                      - ':catalog'
+                  - !Join
+                    - ''
+                    - - 'arn:'
+                      - !Ref AWS::Partition
+                      - ':glue:'
+                      - !Ref AWS::Region
+                      - ':'
+                      - !Ref AWS::AccountId
+                      - ':table/easyanalytics'
+                      - !Ref 6Suffix
+                      - '/*'
+                  - !Join
+                    - ''
+                    - - 'arn:'
+                      - !Ref AWS::Partition
+                      - ':athena:'
+                      - !Ref AWS::Region
+                      - ':'
+                      - !Ref AWS::AccountId
+                      - ':datacatalog/AwsDataCatalog'
+
+  CodeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        RestrictPublicBuckets: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+      BucketName: !Join
+          - ''
+          - - easyanalytics-codebucket-
+            - !Ref AWS::AccountId
+            - !Ref 6Suffix
+
+  CodeDownloadLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.10
+      FunctionName: !Join
+        - ''
+        - - EasyAnalyticsCodeDownload
+          - !Ref 6Suffix
+      Handler: index.handler
+      MemorySize: 128
+      Role: !GetAtt EasyAnalyticsExecRole.Arn
+      Timeout: 120
+      ReservedConcurrentExecutions: 1
+      Code:
+        ZipFile: |
+          import json, urllib3, boto3
+          import cfnresponse
+          from zipfile import ZipFile
+          from io import BytesIO
+
+          def handler(event, context):
+
+            def create_file(codeUrl, bucket, fileName, s3):
+              try:
+                http = urllib3.PoolManager()
+                fileContent = http.request('GET',codeUrl).data
+
+                response = s3.put_object(
+                                Bucket = bucket,
+                                Key = fileName,
+                                Body = fileContent
+                            )
+                return(True, "File created - " + fileName)
+
+              except Exception as e:
+                return (False, "Couldnt download file - " + fileName + ": " + str(e))
+
+            def delete_file(bucket, fileName, s3):
+              try:
+                response = s3.delete_object(
+                                Bucket = bucket,
+
+                                Key = fileName
+                            )
+                return (True, "File deleted - " + fileName)
+
+              except Exception as e:
+                return (False, "Couldnt delete file - " + fileName + ": " + str(e))
+
+            #####################################################################################
+            #Main flow
+            #####################################################################################
+            codeUrl = event['ResourceProperties']['CodeUrl']
+            bucket = event['ResourceProperties']['Bucket']
+            fileName = event['ResourceProperties']['FileName']
+            s3 = boto3.client('s3')
+
+            if event['RequestType'] == 'Create':
+              result, response = create_file(codeUrl, bucket, fileName, s3)
+            elif event['RequestType'] == 'Update':
+              result, response = (True, "Update method not implemented")
+            elif event['RequestType'] == 'Delete':
+              result, response = delete_file(bucket, fileName, s3)
+            else:
+              result = False
+              response = "Unknown operation: " + event['RequestType']
+
+            responseData = {}
+            responseData['Response'] = response
+
+            if result:
+              cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, 'CustomResourceLambdaFileDownload')
+            else:
+              cfnresponse.send(event, context, cfnresponse.FAILED, responseData, 'CustomResourceLambdaFileDownload')
+
+  CodeDownloadLambdaExecutor:
+    Type: Custom::CodeDownloadLambdaExecutor
+    Properties:
+      ServiceToken: !GetAtt CodeDownloadLambda.Arn
+      Name: !Join
+        - ''
+        - - EasyAnalyticsCodeDownloadLambdaExecutor
+          - !Ref 6Suffix
+      CodeUrl: 'https://github.com/rajjayaaws/sample/raw/main/EasyAnalyticsCustomResource.zip'
+      Bucket: !Ref CodeBucket
+      FileName: EasyAnalyticsCustomResource.zip
+
+  CustomResourceLambda:
+    Type: AWS::Lambda::Function
+    DependsOn: CodeDownloadLambdaExecutor
+    Properties:
+      Runtime: python3.10
+      FunctionName: !Join
+        - ''
+        - - EasyAnalyticsCustomResource
+          - !Ref 6Suffix
+      Handler: EasyAnalyticsCustomResource.handler
+      MemorySize: 128
+      Role: !GetAtt EasyAnalyticsExecRole.Arn
+      Timeout: 600
+      ReservedConcurrentExecutions: 1
+      Code:
+        S3Bucket: !Ref CodeBucket
+        S3Key: EasyAnalyticsCustomResource.zip
+      TracingConfig:
+        Mode: Active
+
+  GetQuickSightAccountStatus:
+    Type: Custom::GetQuickSightAccountStatus
+    Properties:
+      ServiceToken: !GetAtt CustomResourceLambda.Arn
+      Name: !Join
+        - ''
+        - - GetQuickSightAccountStatus
+          - !Ref 6Suffix
+      ResourceType: 'getAccountStatus'
+      AwsAccountId: !Ref AWS::AccountId
+      AccountName: !Ref 4QuickSighAccountName
+      NotificationEmail: !Ref 5QuickSighNotificationEmail
+      UserName: !Ref 3QuickSightUser
+
+  GetQuickSightIdentityRegion:
+    Type: Custom::GetQuickSightIdentityRegion
+    DependsOn: GetQuickSightAccountStatus
+    Properties:
+      ServiceToken: !GetAtt CustomResourceLambda.Arn
+      Name: !Join
+        - ''
+        - - GetQuickSightIdentityRegion
+          - !Ref 6Suffix
+      ResourceType: 'getIdentityRegion'
+      AwsAccountId: !Ref AWS::AccountId
+
+  GlueSecurityConfiguration:
+    Type: 'AWS::Glue::SecurityConfiguration'
+    Properties:
+      EncryptionConfiguration:
+        S3Encryptions:
+          - S3EncryptionMode: SSE-S3
+      Name: !Join
+        - ''
+        - - GlueSecurityConfiguration
+          - !Ref 6Suffix
+
+  RegisterLocationAndGrantPermission:
+    Type: Custom::RegisterLocationAndGrantPermission
+    DependsOn: GlueSecurityConfiguration
+    Properties:
+      ServiceToken: !GetAtt CustomResourceLambda.Arn
+      Name: !Join
+        - ''
+        - - RegisterLocationAndGrantPermission
+          - !Ref 6Suffix
+      ResourceType: 'registerLocationAndGrantPermission'
+      AwsAccountId: !Ref AWS::AccountId
+      DataLocationArn: !Join
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - !Select [2, !Split [ "/" , !Ref 2DataSetLocation ]]
+                      - '/'
+      RoleArn: !GetAtt EasyAnalyticsExecRole.Arn
+
+  GlueCrawler:
+    Type: 'AWS::Glue::Crawler'
+    DependsOn: RegisterLocationAndGrantPermission
+    Properties:
+      Name: !Join
+        - ''
+        - - EasyAnalyticsCrawler
+          - !Ref 6Suffix
+      Description: A recurring crawler
+      Role: !GetAtt EasyAnalyticsExecRole.Arn
+      CrawlerSecurityConfiguration: !Join
+        - ''
+        - - GlueSecurityConfiguration
+          - !Ref 6Suffix
+      Schedule:
+        ScheduleExpression: cron(15 12 * * ? *)
+      RecrawlPolicy:
+        RecrawlBehavior: CRAWL_NEW_FOLDERS_ONLY
+      DatabaseName: !Join
+            - ''
+            - - easyanalytics
+              - !Ref 6Suffix
+      Targets:
+        S3Targets:
+          - Path: !Ref 2DataSetLocation
+          - SampleSize: 5
+      SchemaChangePolicy:
+        UpdateBehavior: LOG
+        DeleteBehavior: LOG
+      Configuration: "{\"Version\":1.0,\"Grouping\":{\"TableGroupingPolicy\":\"CombineCompatibleSchemas\"},\"CrawlerOutput\":{\"Partitions\":{\"AddOrUpdateBehavior\":\"InheritFromTable\"}}}"
+
+  StartGlueCrawler:
+    Type: Custom::StartGlueCrawler
+    DependsOn:
+      - RegisterLocationAndGrantPermission
+      - GlueCrawler
+    Properties:
+      ServiceToken: !GetAtt CustomResourceLambda.Arn
+      Name: !Join
+        - ''
+        - - StartGlueCrawler
+          - !Ref 6Suffix
+      ResourceType: 'startCrawler'
+      AwsAccountId: !Ref AWS::AccountId
+      CrawlerName: !Ref GlueCrawler
+      DatabaseName: !Join
+        - ''
+        - - easyanalytics
+          - !Ref 6Suffix
+
+  CheckGlueCrawler1:
+    Type: Custom::CheckGlueCrawler1
+    DependsOn: StartGlueCrawler
+    Properties:
+      ServiceToken: !GetAtt CustomResourceLambda.Arn
+      Name: !Join
+        - ''
+        - - CheckGlueCrawler1-
+          - !Ref 6Suffix
+      ResourceType: 'checkCrawler'
+      AwsAccountId: !Ref AWS::AccountId
+      CrawlerName: !Ref GlueCrawler
+      LastWaitJob: 'No'
+
+  CheckGlueCrawler2:
+    Type: Custom::CheckGlueCrawler2
+    DependsOn: CheckGlueCrawler1
+    Properties:
+      ServiceToken: !GetAtt CustomResourceLambda.Arn
+      Name: !Join
+        - ''
+        - - CheckGlueCrawler2-
+          - !Ref 6Suffix
+      ResourceType: 'checkCrawler'
+      AwsAccountId: !Ref AWS::AccountId
+      CrawlerName: !Ref GlueCrawler
+      LastWaitJob: 'No'
+
+  CheckGlueCrawler3:
+    Type: Custom::CheckGlueCrawler3
+    DependsOn: CheckGlueCrawler2
+    Properties:
+      ServiceToken: !GetAtt CustomResourceLambda.Arn
+      Name: !Join
+        - ''
+        - - CheckGlueCrawler3-
+          - !Ref 6Suffix
+      ResourceType: 'checkCrawler'
+      AwsAccountId: !Ref AWS::AccountId
+      CrawlerName: !Ref GlueCrawler
+      LastWaitJob: 'No'
+
+  CheckGlueCrawler4:
+    Type: Custom::CheckGlueCrawler4
+    DependsOn: CheckGlueCrawler3
+    Properties:
+      ServiceToken: !GetAtt CustomResourceLambda.Arn
+      Name: !Join
+        - ''
+        - - CheckGlueCrawler4-
+          - !Ref 6Suffix
+      ResourceType: 'checkCrawler'
+      AwsAccountId: !Ref AWS::AccountId
+      CrawlerName: !Ref GlueCrawler
+      LastWaitJob: 'Yes'
+
+
+  GetTable:
+    Type: Custom::GetTable
+    DependsOn: CheckGlueCrawler4
+    Properties:
+      ServiceToken: !GetAtt CustomResourceLambda.Arn
+      Name: !Join
+        - ''
+        - - GetTable-
+          - !Ref 6Suffix
+      ResourceType: 'getTable'
+      AwsAccountId: !Ref AWS::AccountId
+      DatabaseName: !Join
+            - ''
+            - - easyanalytics
+              - !Ref 6Suffix
+
+  GrantDatabaseAndTablePermissions:
+    Type: Custom::GrantDatabaseAndTablePermissions
+    DependsOn: EasyAnalyticsQuickSightRole
+    Properties:
+      ServiceToken: !GetAtt CustomResourceLambda.Arn
+      Name: !Join
+        - ''
+        - - GrantDatabaseAndTablePermissions
+          - !Ref 6Suffix
+      ResourceType: 'grantDatabaseAndTablePermissions'
+      AwsAccountId: !Ref AWS::AccountId
+      DatabaseName: !Join
+            - ''
+            - - easyanalytics
+              - !Ref 6Suffix
+      TableName: !GetAtt GetTable.Response
+      UserArn: !Join
+            - ''
+            - - 'arn:aws:quicksight:'
+              - !GetAtt GetQuickSightIdentityRegion.Response
+              - ':'
+              - !Ref AWS::AccountId
+              - ':user/default/'
+              - !Ref 3QuickSightUser
+      RoleArn: !GetAtt EasyAnalyticsExecRole.Arn
+      QSRoleArn: !GetAtt EasyAnalyticsQuickSightRole.Arn
+
+  # QuckSightDataSource:
+  #   Type: AWS::QuickSight::DataSource
+  #   DependsOn: GrantDatabaseAndTablePermissions
+  #   Properties:
+  #     DataSourceId: !Join
+  #       - ''
+  #       - - EasyAnalytics-ds-
+  #         - !GetAtt GetTable.Response
+  #         - !Ref 6Suffix
+  #     Name: !Join
+  #       - ''
+  #       - - EasyAnalytics-
+  #         - !GetAtt GetTable.Response
+  #         - !Ref 6Suffix
+  #     AwsAccountId: !Ref AWS::AccountId
+  #     Type: ATHENA
+  #     DataSourceParameters:
+  #       AthenaParameters:
+  #         WorkGroup: primary
+  #         RoleArn: !GetAtt EasyAnalyticsQuickSightRole.Arn
+  #     SslProperties:
+  #       DisableSsl: false
+  #     Permissions:
+  #       - Principal: !Join
+  #           - ''
+  #           - - 'arn:aws:quicksight:'
+  #             - !GetAtt GetQuickSightIdentityRegion.Response
+  #             - ':'
+  #             - !Ref AWS::AccountId
+  #             - ':user/default/'
+  #             - !Ref 3QuickSightUser
+  #         Actions:
+  #           - quicksight:UpdateDataSourcePermissions
+  #           - quicksight:DescribeDataSource
+  #           - quicksight:DescribeDataSourcePermissions
+  #           - quicksight:PassDataSource
+  #           - quicksight:UpdateDataSource
+  #           - quicksight:DeleteDataSource
+
+  QuckSightDataSource:
+    Type: Custom::QuckSightDataSource
+    DependsOn: GrantDatabaseAndTablePermissions
+    Properties:
+      ServiceToken: !GetAtt CustomResourceLambda.Arn
+      Name: !Join
+        - ''
+        - - EasyAnalytics-
+          - !GetAtt GetTable.Response
+          - !Ref 6Suffix
+      ResourceType: 'quickSightDatasource'
+      AwsAccountId: !Ref AWS::AccountId
+      UserArn: !Join
+            - ''
+            - - 'arn:aws:quicksight:'
+              - !GetAtt GetQuickSightIdentityRegion.Response
+              - ':'
+              - !Ref AWS::AccountId
+              - ':user/default/'
+              - !Ref 3QuickSightUser
+      DatasourceName: !Join
+        - ''
+        - - EasyAnalytics-
+          - !GetAtt GetTable.Response
+          - !Ref 6Suffix
+      DataSourceId: !Join
+        - ''
+        - - EasyAnalytics-ds-
+          - !GetAtt GetTable.Response
+          - !Ref 6Suffix
+      RunAsRoleArn: !GetAtt EasyAnalyticsQuickSightRole.Arn
+
+  QuickSightDataset:
+    Type: Custom::QuickSightDataset
+    DependsOn: QuckSightDataSource
+    Properties:
+      ServiceToken: !GetAtt CustomResourceLambda.Arn
+      Name: !Join
+        - ''
+        - - QuickSightDataset-
+          - !GetAtt GetTable.Response
+          - !Ref 6Suffix
+      ResourceType: 'quickSightDataset'
+      AwsAccountId: !Ref AWS::AccountId
+      DatabaseName: !Join
+            - ''
+            - - easyanalytics
+              - !Ref 6Suffix
+      TableName: !GetAtt GetTable.Response
+      Suffix: !Ref 6Suffix
+      UserArn: !Join
+            - ''
+            - - 'arn:aws:quicksight:'
+              - !GetAtt GetQuickSightIdentityRegion.Response
+              - ':'
+              - !Ref AWS::AccountId
+              - ':user/default/'
+              - !Ref 3QuickSightUser
+      DatasetName: !Join
+        - ''
+        - - EasyAnalytics-
+          - !GetAtt GetTable.Response
+          - !Ref 6Suffix
+      DataSourceArn: !GetAtt QuckSightDataSource.Response
+
+  QuickSightAnalysis:
+    Type: AWS::QuickSight::Analysis
+    DependsOn: QuickSightDataset
+    Properties:
+      AnalysisId: !Join
+        - ''
+        - - EasyAnalytics-
+          - !GetAtt GetTable.Response
+          - !Ref 6Suffix
+      Name: !Join
+        - ''
+        - - EasyAnalytics-
+          - !GetAtt GetTable.Response
+          - !Ref 6Suffix
+      AwsAccountId: !Ref AWS::AccountId
+      SourceEntity:
+        SourceTemplate:
+          Arn: arn:aws:quicksight:us-east-1:874374045911:template/StarterTemplate
+          DataSetReferences:
+            - DataSetPlaceholder: DS1
+              DataSetArn: !Join
+                  - ''
+                  - - 'arn:aws:quicksight:'
+                    - !Ref AWS::Region
+                    - ':'
+                    - !Ref AWS::AccountId
+                    - ':dataset/'
+                    - EasyAnalytics-
+                    - !GetAtt GetTable.Response
+                    - !Ref 6Suffix
+      Permissions:
+        - Principal: !Join
+            - ''
+            - - 'arn:aws:quicksight:'
+              - 'us-east-1'
+              - ':'
+              - !Ref AWS::AccountId
+              - ':user/default/'
+              - !Ref 3QuickSightUser
+          Actions:
+            - quicksight:RestoreAnalysis
+            - quicksight:UpdateAnalysisPermissions
+            - quicksight:DeleteAnalysis
+            - quicksight:DescribeAnalysisPermissions
+            - quicksight:QueryAnalysis
+            - quicksight:DescribeAnalysis
+            - quicksight:UpdateAnalysis
+
+
+Outputs:
+  QuickSightUserInvitationUrl:
+    Description: Use this link to setup a password for the new QuickSight user. If you have an existing QuickSight account, login as the user you provided.
+    Value: !GetAtt GetQuickSightAccountStatus.Response
+
+  AdhocAnalysisUrl:
+    Description: Click on this url to do adhoc analysis in QuickSight.
+    Value: !Join
+      - ''
+      - - 'https://'
+        - !Ref AWS::Region
+        - '.quicksight.aws.amazon.com/sn/analyses/EasyAnalytics-'
+        - !GetAtt GetTable.Response
+        - !Ref 6Suffix
