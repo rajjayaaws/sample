@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: AWS INTERNAL DEMO - Easy Analytics - This stack takes an S3 location as input and creates all the backend resources needed to visualize the data contained there in QuickSight.
+Description: Accelerating Analytics - This stack takes an S3 location as input and creates all the backend resources needed to visualize the data contained there in QuickSight.
 Parameters:
   1ReadMe:
     Type: String
