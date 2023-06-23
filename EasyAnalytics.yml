@@ -114,6 +114,7 @@ Resources:
                   - quicksight:SetGroupMapping
                   - quicksight:CreateAccountSubscription
                   - quicksight:ListUsers
+                  - glue:GetSecurityConfiguration
                 Resource: '*'
               - Effect: Allow
                 Action:
