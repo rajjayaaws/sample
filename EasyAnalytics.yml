@@ -1,28 +1,28 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Accelerating Analytics - This stack takes an S3 location as input and creates all the backend resources needed to visualize the data contained there in QuickSight.
 Parameters:
-  1ReadMe:
+  ReadMe:
     Type: String
     Default: README
-    Description: 'AWS INTERNAL DEMO - PREREQUISITES - 1) Data should be available in S3 (Do NOT use S3 paths you need for other demos. Access will be modified in LakeFormation.), 2) QuickSight should be setup on the account, 3) Athena Primary workgroup should have a query result location configured.'
-  2DataSetLocation:
+    Description: 'PREREQUISITES - 1) Data should be available in S3 (Do NOT use S3 paths you need for other demos. Access will be modified in LakeFormation.), 2) QuickSight should be setup on the account, 3) Athena Primary workgroup should have a query result location configured.'
+  DataSetLocation:
     Type: String
     MinLength: 1
     Description: 'Enter S3 URI for your dataset. E.g. s3://bucket/prefix/data/'
-  3QuickSightUser:
+  QuickSightUser:
     Type: String
     MinLength: 1
-    Description: REQUIRED - User name of QuickSight user from default namespace (as displayed in QuickSight admin panel). For new a QuickSight subscription, ensure this User name is not same as any IAM username. Dashboard created by this template with be shared with this user.
-  4QuickSighAccountName:
+    Description: REQUIRED - User name of QuickSight user from default namespace (as displayed in QuickSight admin panel). For new a QuickSight subscription, ensure this User name is not same as any IAM username and does not contain '/'. Dashboard created by this template with be shared with this user.
+  QuickSighAccountName:
     Type: String
     MinLength: 1
     Description: REQUIRED - Account name for a new QuickSight subscription. The account name cannot be changed later. This value is ignored if you have an existing QuickSight account.
-  5QuickSighNotificationEmail:
+  QuickSighNotificationEmail:
     Type: String
     MinLength: 1
     Description: REQUIRED - Notification email for a new QuickSight account. This value is ignored if you have an existing QuickSight account.
     AllowedPattern: '[^@]+@[^@]+\.[^@]+'
-  6Suffix:
+  Suffix:
     Type: String
     Description: OPTIONAL - If you need to create multiple instances of embedding sample on same aws account, add a short NUMERIC suffix here.
 
@@ -34,7 +34,7 @@ Resources:
       RoleName: !Join
         - ''
         - - EasyAnalyticsExecRole
-          - !Ref 6Suffix
+          - !Ref Suffix
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -54,7 +54,7 @@ Resources:
         - PolicyName: !Join
           - ''
           - - EasyAnalyticsPolicy
-            - !Ref 6Suffix
+            - !Ref Suffix
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -74,13 +74,13 @@ Resources:
                     - - 'arn:aws:s3:::'
                       - easyanalytics-codebucket-
                       - !Ref AWS::AccountId
-                      - !Ref 6Suffix
+                      - !Ref Suffix
                   - !Join
                     - ''
                     - - 'arn:aws:s3:::'
                       - easyanalytics-codebucket-
                       - !Ref AWS::AccountId
-                      - !Ref 6Suffix
+                      - !Ref Suffix
                       - '/*'
               - Effect: Allow
                 Action:
@@ -90,11 +90,11 @@ Resources:
                   - !Join
                     - ''
                     - - 'arn:aws:s3:::'
-                      - !Select [2, !Split [ "/" , !Ref 2DataSetLocation ]]
+                      - !Select [2, !Split [ "/" , !Ref DataSetLocation ]]
                   - !Join
                     - ''
                     - - 'arn:aws:s3:::'
-                      - !Select [2, !Split [ "/" , !Ref 2DataSetLocation ]]
+                      - !Select [2, !Split [ "/" , !Ref DataSetLocation ]]
                       - '/*'
               - Effect: Allow
                 Action:
@@ -147,7 +147,7 @@ Resources:
                       - ':'
                       - !Ref AWS::AccountId
                       - ':database/easyanalytics'
-                      - !Ref 6Suffix
+                      - !Ref Suffix
                   - !Join
                     - ''
                     - - 'arn:'
@@ -157,7 +157,7 @@ Resources:
                       - ':'
                       - !Ref AWS::AccountId
                       - ':userDefinedFunction/easyanalytics'
-                      - !Ref 6Suffix
+                      - !Ref Suffix
                       - '/*'
                   - !Join
                     - ''
@@ -168,7 +168,7 @@ Resources:
                       - ':'
                       - !Ref AWS::AccountId
                       - ':crawler/EasyAnalyticsCrawler'
-                      - !Ref 6Suffix
+                      - !Ref Suffix
                   - !Join
                     - ''
                     - - 'arn:'
@@ -187,7 +187,7 @@ Resources:
                       - ':'
                       - !Ref AWS::AccountId
                       - ':table/easyanalytics'
-                      - !Ref 6Suffix
+                      - !Ref Suffix
                       - '/*'
               - Effect: Allow
                 Action:
@@ -262,9 +262,9 @@ Resources:
                     - - 'arn:aws:quicksight:*:'
                       - !Ref AWS::AccountId
                       - ':user/default/EasyAnalyticsExecRole'
-                      - !Ref 6Suffix
+                      - !Ref Suffix
                       - '/EasyAnalyticsCustomResource'
-                      - !Ref 6Suffix
+                      - !Ref Suffix
               - Effect: Allow
                 Action:
                   - quicksight:RegisterUser
@@ -274,7 +274,7 @@ Resources:
                     - - 'arn:aws:quicksight:*:'
                       - !Ref AWS::AccountId
                       - ':user/default/'
-                      - !Ref 3QuickSightUser
+                      - !Ref QuickSightUser
 
   EasyAnalyticsQuickSightRole:
     Type: AWS::IAM::Role
@@ -283,7 +283,7 @@ Resources:
       RoleName: !Join
         - ''
         - - EasyAnalyticsQuickSightRole
-          - !Ref 6Suffix
+          - !Ref Suffix
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -297,7 +297,7 @@ Resources:
         - PolicyName: !Join
           - ''
           - - EasyAnalyticsQSPolicy
-            - !Ref 6Suffix
+            - !Ref Suffix
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -320,11 +320,11 @@ Resources:
                   - !Join
                     - ''
                     - - 'arn:aws:s3:::'
-                      - !Select [2, !Split [ "/" , !Ref 2DataSetLocation ]]
+                      - !Select [2, !Split [ "/" , !Ref DataSetLocation ]]
                   - !Join
                     - ''
                     - - 'arn:aws:s3:::'
-                      - !Select [2, !Split [ "/" , !Ref 2DataSetLocation ]]
+                      - !Select [2, !Split [ "/" , !Ref DataSetLocation ]]
                       - '/*'
               - Effect: Allow
                 Action:
@@ -363,7 +363,7 @@ Resources:
                       - ':'
                       - !Ref AWS::AccountId
                       - ':database/easyanalytics'
-                      - !Ref 6Suffix
+                      - !Ref Suffix
                   - !Join
                     - ''
                     - - 'arn:'
@@ -396,7 +396,7 @@ Resources:
                       - ':'
                       - !Ref AWS::AccountId
                       - ':table/easyanalytics'
-                      - !Ref 6Suffix
+                      - !Ref Suffix
                       - '/*'
                   - !Join
                     - ''
@@ -420,7 +420,7 @@ Resources:
           - ''
           - - easyanalytics-codebucket-
             - !Ref AWS::AccountId
-            - !Ref 6Suffix
+            - !Ref Suffix
 
   CodeDownloadLambda:
     Type: AWS::Lambda::Function
@@ -429,7 +429,7 @@ Resources:
       FunctionName: !Join
         - ''
         - - EasyAnalyticsCodeDownload
-          - !Ref 6Suffix
+          - !Ref Suffix
       Handler: index.handler
       MemorySize: 128
       Role: !GetAtt EasyAnalyticsExecRole.Arn
@@ -504,7 +504,7 @@ Resources:
       Name: !Join
         - ''
         - - EasyAnalyticsCodeDownloadLambdaExecutor
-          - !Ref 6Suffix
+          - !Ref Suffix
       CodeUrl: 'https://github.com/rajjayaaws/sample/raw/main/EasyAnalyticsCustomResource.zip'
       Bucket: !Ref CodeBucket
       FileName: EasyAnalyticsCustomResource.zip
@@ -517,7 +517,7 @@ Resources:
       FunctionName: !Join
         - ''
         - - EasyAnalyticsCustomResource
-          - !Ref 6Suffix
+          - !Ref Suffix
       Handler: EasyAnalyticsCustomResource.handler
       MemorySize: 128
       Role: !GetAtt EasyAnalyticsExecRole.Arn
@@ -536,12 +536,12 @@ Resources:
       Name: !Join
         - ''
         - - GetQuickSightAccountStatus
-          - !Ref 6Suffix
+          - !Ref Suffix
       ResourceType: 'getAccountStatus'
       AwsAccountId: !Ref AWS::AccountId
-      AccountName: !Ref 4QuickSighAccountName
-      NotificationEmail: !Ref 5QuickSighNotificationEmail
-      UserName: !Ref 3QuickSightUser
+      AccountName: !Ref QuickSighAccountName
+      NotificationEmail: !Ref QuickSighNotificationEmail
+      UserName: !Ref QuickSightUser
 
   GetQuickSightIdentityRegion:
     Type: Custom::GetQuickSightIdentityRegion
@@ -551,7 +551,7 @@ Resources:
       Name: !Join
         - ''
         - - GetQuickSightIdentityRegion
-          - !Ref 6Suffix
+          - !Ref Suffix
       ResourceType: 'getIdentityRegion'
       AwsAccountId: !Ref AWS::AccountId
 
@@ -564,7 +564,7 @@ Resources:
       Name: !Join
         - ''
         - - GlueSecurityConfiguration
-          - !Ref 6Suffix
+          - !Ref Suffix
 
   RegisterLocationAndGrantPermission:
     Type: Custom::RegisterLocationAndGrantPermission
@@ -574,13 +574,13 @@ Resources:
       Name: !Join
         - ''
         - - RegisterLocationAndGrantPermission
-          - !Ref 6Suffix
+          - !Ref Suffix
       ResourceType: 'registerLocationAndGrantPermission'
       AwsAccountId: !Ref AWS::AccountId
       DataLocationArn: !Join
                     - ''
                     - - 'arn:aws:s3:::'
-                      - !Select [2, !Split [ "/" , !Ref 2DataSetLocation ]]
+                      - !Select [2, !Split [ "/" , !Ref DataSetLocation ]]
                       - '/'
       RoleArn: !GetAtt EasyAnalyticsExecRole.Arn
 
@@ -591,13 +591,13 @@ Resources:
       Name: !Join
         - ''
         - - EasyAnalyticsCrawler
-          - !Ref 6Suffix
+          - !Ref Suffix
       Description: A recurring crawler
       Role: !GetAtt EasyAnalyticsExecRole.Arn
       CrawlerSecurityConfiguration: !Join
         - ''
         - - GlueSecurityConfiguration
-          - !Ref 6Suffix
+          - !Ref Suffix
       Schedule:
         ScheduleExpression: cron(15 12 * * ? *)
       RecrawlPolicy:
@@ -605,10 +605,10 @@ Resources:
       DatabaseName: !Join
             - ''
             - - easyanalytics
-              - !Ref 6Suffix
+              - !Ref Suffix
       Targets:
         S3Targets:
-          - Path: !Ref 2DataSetLocation
+          - Path: !Ref DataSetLocation
           - SampleSize: 5
       SchemaChangePolicy:
         UpdateBehavior: LOG
@@ -625,14 +625,14 @@ Resources:
       Name: !Join
         - ''
         - - StartGlueCrawler
-          - !Ref 6Suffix
+          - !Ref Suffix
       ResourceType: 'startCrawler'
       AwsAccountId: !Ref AWS::AccountId
       CrawlerName: !Ref GlueCrawler
       DatabaseName: !Join
         - ''
         - - easyanalytics
-          - !Ref 6Suffix
+          - !Ref Suffix
 
   CheckGlueCrawler1:
     Type: Custom::CheckGlueCrawler1
@@ -642,7 +642,7 @@ Resources:
       Name: !Join
         - ''
         - - CheckGlueCrawler1-
-          - !Ref 6Suffix
+          - !Ref Suffix
       ResourceType: 'checkCrawler'
       AwsAccountId: !Ref AWS::AccountId
       CrawlerName: !Ref GlueCrawler
@@ -656,7 +656,7 @@ Resources:
       Name: !Join
         - ''
         - - CheckGlueCrawler2-
-          - !Ref 6Suffix
+          - !Ref Suffix
       ResourceType: 'checkCrawler'
       AwsAccountId: !Ref AWS::AccountId
       CrawlerName: !Ref GlueCrawler
@@ -670,7 +670,7 @@ Resources:
       Name: !Join
         - ''
         - - CheckGlueCrawler3-
-          - !Ref 6Suffix
+          - !Ref Suffix
       ResourceType: 'checkCrawler'
       AwsAccountId: !Ref AWS::AccountId
       CrawlerName: !Ref GlueCrawler
@@ -684,7 +684,7 @@ Resources:
       Name: !Join
         - ''
         - - CheckGlueCrawler4-
-          - !Ref 6Suffix
+          - !Ref Suffix
       ResourceType: 'checkCrawler'
       AwsAccountId: !Ref AWS::AccountId
       CrawlerName: !Ref GlueCrawler
@@ -699,13 +699,13 @@ Resources:
       Name: !Join
         - ''
         - - GetTable-
-          - !Ref 6Suffix
+          - !Ref Suffix
       ResourceType: 'getTable'
       AwsAccountId: !Ref AWS::AccountId
       DatabaseName: !Join
             - ''
             - - easyanalytics
-              - !Ref 6Suffix
+              - !Ref Suffix
 
   GrantDatabaseAndTablePermissions:
     Type: Custom::GrantDatabaseAndTablePermissions
@@ -715,13 +715,13 @@ Resources:
       Name: !Join
         - ''
         - - GrantDatabaseAndTablePermissions
-          - !Ref 6Suffix
+          - !Ref Suffix
       ResourceType: 'grantDatabaseAndTablePermissions'
       AwsAccountId: !Ref AWS::AccountId
       DatabaseName: !Join
             - ''
             - - easyanalytics
-              - !Ref 6Suffix
+              - !Ref Suffix
       TableName: !GetAtt GetTable.Response
       UserArn: !Join
             - ''
@@ -730,7 +730,7 @@ Resources:
               - ':'
               - !Ref AWS::AccountId
               - ':user/default/'
-              - !Ref 3QuickSightUser
+              - !Ref QuickSightUser
       RoleArn: !GetAtt EasyAnalyticsExecRole.Arn
       QSRoleArn: !GetAtt EasyAnalyticsQuickSightRole.Arn
 
@@ -742,12 +742,12 @@ Resources:
   #       - ''
   #       - - EasyAnalytics-ds-
   #         - !GetAtt GetTable.Response
-  #         - !Ref 6Suffix
+  #         - !Ref Suffix
   #     Name: !Join
   #       - ''
   #       - - EasyAnalytics-
   #         - !GetAtt GetTable.Response
-  #         - !Ref 6Suffix
+  #         - !Ref Suffix
   #     AwsAccountId: !Ref AWS::AccountId
   #     Type: ATHENA
   #     DataSourceParameters:
@@ -764,7 +764,7 @@ Resources:
   #             - ':'
   #             - !Ref AWS::AccountId
   #             - ':user/default/'
-  #             - !Ref 3QuickSightUser
+  #             - !Ref QuickSightUser
   #         Actions:
   #           - quicksight:UpdateDataSourcePermissions
   #           - quicksight:DescribeDataSource
@@ -782,7 +782,7 @@ Resources:
         - ''
         - - EasyAnalytics-
           - !GetAtt GetTable.Response
-          - !Ref 6Suffix
+          - !Ref Suffix
       ResourceType: 'quickSightDatasource'
       AwsAccountId: !Ref AWS::AccountId
       UserArn: !Join
@@ -792,17 +792,17 @@ Resources:
               - ':'
               - !Ref AWS::AccountId
               - ':user/default/'
-              - !Ref 3QuickSightUser
+              - !Ref QuickSightUser
       DatasourceName: !Join
         - ''
         - - EasyAnalytics-
           - !GetAtt GetTable.Response
-          - !Ref 6Suffix
+          - !Ref Suffix
       DataSourceId: !Join
         - ''
         - - EasyAnalytics-ds-
           - !GetAtt GetTable.Response
-          - !Ref 6Suffix
+          - !Ref Suffix
       RunAsRoleArn: !GetAtt EasyAnalyticsQuickSightRole.Arn
 
   QuickSightDataset:
@@ -814,15 +814,15 @@ Resources:
         - ''
         - - QuickSightDataset-
           - !GetAtt GetTable.Response
-          - !Ref 6Suffix
+          - !Ref Suffix
       ResourceType: 'quickSightDataset'
       AwsAccountId: !Ref AWS::AccountId
       DatabaseName: !Join
             - ''
             - - easyanalytics
-              - !Ref 6Suffix
+              - !Ref Suffix
       TableName: !GetAtt GetTable.Response
-      Suffix: !Ref 6Suffix
+      Suffix: !Ref Suffix
       UserArn: !Join
             - ''
             - - 'arn:aws:quicksight:'
@@ -830,12 +830,12 @@ Resources:
               - ':'
               - !Ref AWS::AccountId
               - ':user/default/'
-              - !Ref 3QuickSightUser
+              - !Ref QuickSightUser
       DatasetName: !Join
         - ''
         - - EasyAnalytics-
           - !GetAtt GetTable.Response
-          - !Ref 6Suffix
+          - !Ref Suffix
       DataSourceArn: !GetAtt QuckSightDataSource.Response
 
   QuickSightAnalysis:
@@ -846,12 +846,12 @@ Resources:
         - ''
         - - EasyAnalytics-
           - !GetAtt GetTable.Response
-          - !Ref 6Suffix
+          - !Ref Suffix
       Name: !Join
         - ''
         - - EasyAnalytics-
           - !GetAtt GetTable.Response
-          - !Ref 6Suffix
+          - !Ref Suffix
       AwsAccountId: !Ref AWS::AccountId
       SourceEntity:
         SourceTemplate:
@@ -867,7 +867,7 @@ Resources:
                     - ':dataset/'
                     - EasyAnalytics-
                     - !GetAtt GetTable.Response
-                    - !Ref 6Suffix
+                    - !Ref Suffix
       Permissions:
         - Principal: !Join
             - ''
@@ -876,7 +876,7 @@ Resources:
               - ':'
               - !Ref AWS::AccountId
               - ':user/default/'
-              - !Ref 3QuickSightUser
+              - !Ref QuickSightUser
           Actions:
             - quicksight:RestoreAnalysis
             - quicksight:UpdateAnalysisPermissions
@@ -900,4 +900,4 @@ Outputs:
         - !Ref AWS::Region
         - '.quicksight.aws.amazon.com/sn/analyses/EasyAnalytics-'
         - !GetAtt GetTable.Response
-        - !Ref 6Suffix
+        - !Ref Suffix
