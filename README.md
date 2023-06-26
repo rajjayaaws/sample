@@ -21,15 +21,15 @@ All input parameters are required.
 **Follow the steps below to create the CloudFormation stack**
 
 1. Download/Save the Easyanalytics.yml file
-Navigate to AWS Console
-1. Search for CloudFormation in the "Services" search bar
-2. Once in the CloudFormation console, click on the "Create Stack" button (use the "With new resources option")
-3. In the "Create Stack" wizard, chose "Template is ready", then select "Upload a template file"
-4. Upload the provided yaml file, click Next
-5. In the Specify stack details screen, provide the required inputs
-6. In the Configure Stack options screen, leave the configurations as-is. Click Next
-7. In the Review screen, scroll down to the bottom of the page to the Capabilities section and acknowledge the notice that the stack is going to create required IAM Roles by checking the check box. 
-8. Click Create stack
+2. Navigate to AWS Console
+3. Search for CloudFormation in the "Services" search bar
+4. Once in the CloudFormation console, click on the "Create Stack" button (use the "With new resources option")
+5. In the "Create Stack" wizard, chose "Template is ready", then select "Upload a template file"
+6. Upload the provided yaml file, click Next
+7. In the Specify stack details screen, provide the required inputs
+8. In the Configure Stack options screen, leave the configurations as-is. Click Next
+9. In the Review screen, scroll down to the bottom of the page to the Capabilities section and acknowledge the notice that the stack is going to create required IAM Roles by checking the check box. 
+10. Click Create stack
 
 **Output**
 
