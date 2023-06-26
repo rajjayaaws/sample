@@ -9,7 +9,7 @@ To gain insights from data, you have to create a S3 bucket and upload data as fl
 
 **Input**
 
-All input parameters are required.
+All input parameters are required except *Suffix*.
 
 - Stack name - Stack name can include letters (A-Z and a-z), numbers (0-9), and dashes (-)
 - DataSetLocation - Enter S3 URI for your dataset. E.g. s3://bucket/prefix/data/
